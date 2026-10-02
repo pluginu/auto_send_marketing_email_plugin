@@ -31,3 +31,5 @@ Profile Audit aliases include `email_addresses`, `profile_name`, `profile_url`, 
 ## Troubleshooting
 
 If the panel says **Open Private Email**, open or refresh the Private Email tab after installing the extension. If composing fails, keep the inbox visible, dismiss cookie banners, and retry. Chrome only injects content scripts into already-open tabs after a refresh.
+
+The extension verifies that Private Email retained the generated body before automatic sending. If verification fails, it stops without clicking Send. Open **Settings → Diagnostic log** to view, export, or clear the latest 1,000 diagnostic events. Exports use newline-delimited JSON (`.ndjson`) and exclude the OpenAI API key.

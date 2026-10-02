@@ -14,6 +14,30 @@ const DEFAULTS = {
   queue: []
 };
 
+const MAX_LOG_ENTRIES = 1000;
+// Serialize storage updates so simultaneous events cannot overwrite one another.
+let logWrite = Promise.resolve();
+
+function safeDetails(details = {}) {
+  // Diagnostic exports must never include credentials or unbounded editor content.
+  const clean = {};
+  for (const [key, value] of Object.entries(details)) {
+    if (/api.?key|authorization|token/i.test(key)) continue;
+    clean[key] = typeof value === "string" && value.length > 1000 ? `${value.slice(0, 1000)}…` : value;
+  }
+  return clean;
+}
+
+function appendLog(level, event, details = {}) {
+  const entry = { timestamp: new Date().toISOString(), level, event, details: safeDetails(details) };
+  logWrite = logWrite.then(async () => {
+    const { diagnosticLogs = [] } = await chrome.storage.local.get("diagnosticLogs");
+    diagnosticLogs.push(entry);
+    await chrome.storage.local.set({ diagnosticLogs: diagnosticLogs.slice(-MAX_LOG_ENTRIES) });
+  }).catch(() => {});
+  return logWrite;
+}
+
 chrome.runtime.onInstalled.addListener(async () => {
   const current = await chrome.storage.local.get(Object.keys(DEFAULTS));
   const next = {};
@@ -25,10 +49,21 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message.type === "LOG_EVENT") {
+    appendLog(message.level || "info", message.event || "unknown", message.details).then(() => sendResponse({ ok: true }));
+    return true;
+  }
   if (message.type !== "GENERATE_EMAIL") return false;
+  appendLog("info", "draft_generation_started", { contactId: message.payload?.contact?.id, email: message.payload?.contact?.email, model: message.payload?.settings?.model });
   generateEmail(message.payload)
-    .then((draft) => sendResponse({ ok: true, draft }))
-    .catch((error) => sendResponse({ ok: false, error: error.message }));
+    .then((draft) => {
+      appendLog("info", "draft_generation_completed", { contactId: message.payload?.contact?.id, subjectLength: draft.subject?.length || 0, bodyLength: draft.body?.length || 0 });
+      sendResponse({ ok: true, draft });
+    })
+    .catch((error) => {
+      appendLog("error", "draft_generation_failed", { contactId: message.payload?.contact?.id, error: error.message });
+      sendResponse({ ok: false, error: error.message });
+    });
   return true;
 });
 
@@ -89,5 +124,12 @@ async function generateEmail({ contact, settings }) {
   if (!response.ok) throw new Error(data?.error?.message || `OpenAI request failed (${response.status}).`);
   const text = data.output?.flatMap((item) => item.content || []).find((item) => item.type === "output_text")?.text;
   if (!text) throw new Error("OpenAI returned no email text.");
-  try { return JSON.parse(text); } catch { throw new Error("OpenAI returned an unreadable draft."); }
+  try {
+    const draft = JSON.parse(text);
+    if (!draft.subject?.trim() || !draft.body?.trim()) throw new Error("OpenAI returned a draft with an empty subject or body.");
+    return draft;
+  } catch (error) {
+    if (/empty subject or body/.test(error.message)) throw error;
+    throw new Error("OpenAI returned an unreadable draft.");
+  }
 }

@@ -25,6 +25,7 @@
       <div class="card"><h2>OpenAI</h2><label>API key<input id="apiKey" type="password" autocomplete="off" placeholder="sk-…"></label><p class="muted">Stored only in Chrome local storage on this browser.</p><label>Model<input id="model" value="gpt-4o-mini"></label></div>
       <div class="card"><h2>Sender</h2><label>Your name<input id="senderName"></label><label>Company<input id="company" value="SIN"></label><label>Tone<input id="tone"></label></div>
       <div class="card"><h2>Delivery controls</h2><div class="grid"><label>Min pause (sec)<input id="minPause" type="number" min="10"></label><label>Max pause (sec)<input id="maxPause" type="number" min="10"></label></div><p class="muted">Use only with recipients who may legally receive your message. Include required identity and opt-out language.</p></div>
+      <div class="card"><div class="row"><h2>Diagnostic log</h2><span id="logCount" class="muted">0 entries</span></div><p class="muted">Records generation and mail-editor steps without your API key. Export this file when debugging.</p><div class="actions"><button id="viewLogs" class="secondary">View</button><button id="exportLogs" class="ghost">Export</button><button id="clearLogs" class="danger">Clear</button></div><textarea id="logViewer" class="log-viewer" rows="12" readonly hidden></textarea></div>
       <button id="saveSettings" class="primary full">Save settings</button>
     </section>
   </main>

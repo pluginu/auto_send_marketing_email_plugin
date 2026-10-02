@@ -1,6 +1,7 @@
 const $ = (id) => document.getElementById(id);
 let state = { contacts: [], queue: [], settings: {} };
 let running = false;
+const logEvent = (level, event, details = {}) => chrome.runtime.sendMessage({ type: "LOG_EVENT", level, event, details }).catch(() => {});
 
 document.querySelectorAll(".tab").forEach((button) => button.addEventListener("click", () => {
   document.querySelectorAll(".tab,.panel").forEach((el) => el.classList.remove("active"));
@@ -19,6 +20,7 @@ async function init() {
   }
   $("autoSend").checked = Boolean(state.settings.autoSend);
   render();
+  await refreshLogs();
   await testConnection();
 }
 
@@ -88,12 +90,17 @@ async function privateEmailTab() {
 }
 
 async function sendItem(item, forceSend=false) {
-  const contact=state.contacts.find(c=>c.id===item.contactId); if(!contact||!item.subject) throw new Error("Generate this draft first.");
-  const tab=await privateEmailTab();
-  const response=await chrome.tabs.sendMessage(tab.id,{type:"PRIVATE_EMAIL_COMPOSE",payload:{to:contact.email,subject:item.subject,body:item.body,send:forceSend}});
-  if(!response?.ok) throw new Error(response?.error||"Private Email did not accept the draft.");
+  const contact=state.contacts.find(c=>c.id===item.contactId); if(!contact||!item.subject||!item.body?.trim()) throw new Error("Generate a complete draft with a non-empty body first.");
+  await logEvent("info", "prepare_requested", { contactId: item.contactId, email: contact.email, subjectLength: item.subject.length, bodyLength: item.body.length, autoSend: forceSend });
+  let response;
+  try { const tab=await privateEmailTab(); response=await chrome.tabs.sendMessage(tab.id,{type:"PRIVATE_EMAIL_COMPOSE",payload:{to:contact.email,subject:item.subject,body:item.body,send:forceSend}}); }
+  catch(error){await logEvent("error","prepare_failed",{contactId:item.contactId,email:contact.email,error:error.message});throw error;}
+  if(!response?.ok){await logEvent("error","prepare_failed",{contactId:item.contactId,email:contact.email,error:response?.error||"No response"});throw new Error(response?.error||"Private Email did not accept the draft.");}
   item.status=forceSend?"sent":"prepared"; await persist(); render();
+  await logEvent("info", forceSend ? "send_completed" : "prepare_completed", { contactId: item.contactId, email: contact.email });
 }
+
+async function refreshLogs(){const {diagnosticLogs=[]}=await chrome.storage.local.get("diagnosticLogs");$("logCount").textContent=`${diagnosticLogs.length} entr${diagnosticLogs.length===1?"y":"ies"}`;$("logViewer").value=diagnosticLogs.map(entry=>JSON.stringify(entry)).join("\n");return diagnosticLogs;}
 
 async function runQueue() {
   if(running)return; running=true;
@@ -120,6 +127,9 @@ function esc(value){const d=document.createElement("div");d.textContent=value??"
 $("csvFile").addEventListener("change",e=>e.target.files[0]&&importCsv(e.target.files[0]));
 $("saveSettings").onclick=saveSettings;$("saveCampaign").onclick=saveSettings;$("generateAll").onclick=generateAll;$("runQueue").onclick=runQueue;
 $("autoSend").onchange=saveSettings;
+$("viewLogs").onclick=async()=>{await refreshLogs();$("logViewer").hidden=!$("logViewer").hidden;$("viewLogs").textContent=$("logViewer").hidden?"View":"Hide";};
+$("exportLogs").onclick=async()=>{const logs=await refreshLogs();const blob=new Blob([logs.map(entry=>JSON.stringify(entry)).join("\n")+"\n"],{type:"application/x-ndjson"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`sin-email-debug-${new Date().toISOString().replace(/[:.]/g,"-")}.ndjson`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);status(`Exported ${logs.length} diagnostic log entries.`);};
+$("clearLogs").onclick=async()=>{if(confirm("Clear all diagnostic log entries?")){await chrome.storage.local.remove("diagnosticLogs");await refreshLogs();status("Diagnostic log cleared.");}};
 $("clearContacts").onclick=async()=>{if(confirm("Remove all imported contacts and drafts?")){state.contacts=[];state.queue=[];await persist();render();}};
 $("downloadSample").onclick=()=>{const csv='email,name,company,role,persona,interests,problem,notes,profile_url,site\nalex@example.com,Alex Morgan,Example Co,Operations Director,Efficiency focused,"automation, analytics",Manual reporting,Met at conference,https://example.com/alex,example.com';const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="sin-customer-profile-template.csv";a.click();URL.revokeObjectURL(a.href);};
 init();
