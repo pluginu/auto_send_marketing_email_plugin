@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SIN Email Marketing Management</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header><div class="mark">S</div><div><h1>SIN Email</h1><p>Marketing Management</p></div><span id="connection" class="pill">Checking…</span></header>
+  <nav><button class="tab active" data-tab="campaign">Campaign</button><button class="tab" data-tab="contacts">Contacts</button><button class="tab" data-tab="settings">Settings</button></nav>
+  <main>
+    <section id="campaign" class="panel active">
+      <div class="stats"><div><strong id="contactCount">0</strong><span>contacts</span></div><div><strong id="draftCount">0</strong><span>drafts</span></div><div><strong id="sentCount">0</strong><span>sent</span></div></div>
+      <div class="card"><label>Campaign offer<textarea id="offer" rows="3" placeholder="What are you offering and why should this person care?"></textarea></label><label>Call to action<input id="callToAction" placeholder="Ask for a 15-minute call"></label><button id="saveCampaign" class="secondary">Save campaign</button></div>
+      <div class="card"><div class="row"><h2>Queue</h2><button id="generateAll" class="primary">Generate drafts</button></div><div id="queue" class="queue empty">Import contacts to begin.</div></div>
+      <div class="runbar"><label class="switch"><input id="autoSend" type="checkbox"><span></span></label><div><b>Automatic sending</b><small>Off by default. Review drafts first.</small></div><button id="runQueue" class="primary">Prepare next</button></div>
+      <p id="status" class="status" role="status"></p>
+    </section>
+    <section id="contacts" class="panel">
+      <div class="card"><h2>Import customer profiles</h2><p class="muted">Accepts your Profile Audit export automatically. Email is required; all other columns become personalization context.</p><label class="drop"><input id="csvFile" type="file" accept=".csv,text/csv"><b>Choose a CSV file</b><span>or drag it here</span></label><button id="downloadSample" class="ghost">Download recommended template</button><div id="importSummary" class="import-summary"></div></div>
+      <div class="card"><div class="row"><h2>Contacts</h2><button id="clearContacts" class="danger">Clear</button></div><div id="contactsList" class="list empty">No contacts imported.</div></div>
+    </section>
+    <section id="settings" class="panel">
+      <div class="card"><h2>OpenAI</h2><label>API key<input id="apiKey" type="password" autocomplete="off" placeholder="sk-…"></label><p class="muted">Stored only in Chrome local storage on this browser.</p><label>Model<input id="model" value="gpt-4o-mini"></label></div>
+      <div class="card"><h2>Sender</h2><label>Your name<input id="senderName"></label><label>Company<input id="company" value="SIN"></label><label>Tone<input id="tone"></label></div>
+      <div class="card"><h2>Delivery controls</h2><div class="grid"><label>Min pause (sec)<input id="minPause" type="number" min="10"></label><label>Max pause (sec)<input id="maxPause" type="number" min="10"></label></div><p class="muted">Use only with recipients who may legally receive your message. Include required identity and opt-out language.</p></div>
+      <button id="saveSettings" class="primary full">Save settings</button>
+    </section>
+  </main>
+  <script src="sidepanel.js"></script>
+</body>
+</html>
