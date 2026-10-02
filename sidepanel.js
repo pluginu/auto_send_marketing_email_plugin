@@ -10,6 +10,7 @@ document.querySelectorAll(".tab").forEach((button) => button.addEventListener("c
 }));
 
 async function init() {
+  $("build").textContent = `v${chrome.runtime.getManifest().version}`;
   const stored = await chrome.storage.local.get(["contacts", "queue", "settings", "openaiApiKey"]);
   state.contacts = stored.contacts || [];
   state.queue = stored.queue || [];

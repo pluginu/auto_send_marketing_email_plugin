@@ -38,7 +38,7 @@ function appendLog(level, event, details = {}) {
   return logWrite;
 }
 
-chrome.runtime.onInstalled.addListener(async () => {
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
   const current = await chrome.storage.local.get(Object.keys(DEFAULTS));
   const next = {};
   for (const [key, value] of Object.entries(DEFAULTS)) {
@@ -46,6 +46,11 @@ chrome.runtime.onInstalled.addListener(async () => {
   }
   if (Object.keys(next).length) await chrome.storage.local.set(next);
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
+  if (reason === "update") {
+    // Reload open mail tabs so they immediately receive the updated content script.
+    const tabs = await chrome.tabs.query({ url: "https://privateemail.com/*" });
+    await Promise.allSettled(tabs.map((tab) => chrome.tabs.reload(tab.id)));
+  }
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

@@ -1,5 +1,7 @@
 # SIN Email Marketing Management
 
+Current build: **v0.1.1**
+
 A Chrome Manifest V3 extension that generates personalized sales-email drafts with OpenAI and prepares them in the Private Email web interface.
 
 ## Install
